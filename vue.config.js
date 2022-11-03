@@ -2,7 +2,7 @@ module.exports = {
   pluginOptions: {
     electronBuilder: {
       nodeIntegration: true,
-      externals: ['formidable', 'superagent', 'parse5', 'mssql', 'axios'],
+      externals: ['formidable', 'superagent', 'parse5', 'axios'],
       builderOptions: {
         productName: "Projeto Usinagem",
         files: [
