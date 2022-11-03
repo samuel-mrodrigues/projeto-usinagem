@@ -1,0 +1,49 @@
+input {
+  border: none;
+  padding: 3px;
+  font-size: 2rem;
+  text-align: center;
+  border-bottom: 3px solid #c5c52deb;
+  border-bottom-left-radius: 7px;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 0px;
+  border-top-right-radius: 0px;
+  outline: none;
+}
+
+input:disabled {
+  background-color: rgb(52, 55, 57);
+}
+
+.acoes .botao-grande:not(:last-child) {
+  margin-right: 10px;
+}
+
+.abrir-ficha:disabled {
+  opacity: 40%;
+  cursor: not-allowed;
+}
+
+.janelas-flutuantes {
+  position: relative;
+}
+
+#sair {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  transform: translateX(-100%);
+  margin: 0;
+}
+
+#voltar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+}
+
+.digita-produto button {
+  margin: 0px;
+  vertical-align: bottom;
+}

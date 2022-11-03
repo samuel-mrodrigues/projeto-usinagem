@@ -1,0 +1,58 @@
+.configurar-abas {
+  color: white;
+}
+
+.tela-area {
+  margin: 0px auto;
+  padding: 5px;
+}
+
+.tela-area p {
+  text-transform: uppercase;
+}
+
+.linha {
+  white-space: pre;
+  display: flex;
+  align-items: center;
+}
+
+.linha .slots {
+  width: 100%;
+}
+
+.colunas {
+  display: flex;
+  background-color: #403a3a;
+  border: 1px solid #ffd21f;
+}
+
+.coluna {
+  background-color: #403a3a;
+  margin: 3px;
+  width: 100%;
+  border: 1px solid #ffd21f;
+}
+
+.janelas-flutuantes {
+  position: relative;
+}
+
+.tela-area .linha .coluna p {
+  padding: 3px;
+  margin: 0;
+  font-weight: bold;
+}
+
+.nenhuma-tela {
+  color: white;
+  padding: 5px;
+  font-weight: bold;
+  border: 1px solid yellow;
+}
+
+.acoes {}
+
+.acoes button {
+  white-space: pre;
+}

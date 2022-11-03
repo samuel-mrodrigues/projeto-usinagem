@@ -1,0 +1,37 @@
+.titulo {
+  font-size: 1.5rem;
+}
+
+.editando {
+  padding: 5px;
+}
+
+.campos {
+  padding: 5px;
+}
+
+.campo {
+  padding: 4px;
+  white-space: pre;
+  text-align: left;
+}
+
+.campo .questao {
+  padding: 0;
+  margin: 0;
+  display: inline-block;
+  font-weight: bold;
+
+  margin-right: 2px;
+}
+
+.campo .opcao {}
+
+.campo .opcao input {}
+
+.campo .opcao select {}
+
+.acoes {
+  display: flex;
+  justify-content: space-evenly;
+}

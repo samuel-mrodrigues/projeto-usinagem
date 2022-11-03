@@ -1,0 +1,77 @@
+* {
+    transition: opacity 2s;
+}
+
+#visualizador_pdf {
+    width: 100%;
+}
+
+#visualizador_pdf #controles_visualizador {
+    position: sticky;
+    display: inline-block;
+    top: 95%;
+    left: 100%;
+    z-index: 1;
+}
+
+#visualizador_pdf #nome_aba_visualizador {
+    left: 50%;
+    transform: translateX(-50%);
+    position: fixed;
+}
+
+#visualizador_pdf #nome_aba_visualizador p {
+    color: black;
+    font-weight: bold;
+    font-size: 2rem;
+    white-space: nowrap;
+}
+
+#visualizador_pdf #controles_visualizador button {
+    border: 2px solid gold;
+    border-radius: 5px;
+    font-weight: bold;
+    padding: 5px;
+    background-color: #002865;
+    color: white;
+}
+
+#visualizador_pdf #controles_visualizador button:hover {
+    background-color: #2159af;
+}
+
+#visualizador_pdf #controles_visualizador #fechar_visualizar_pdf {
+    background-color: red;
+    color: white;
+    margin-left: 15px;
+}
+
+#visualizador_pdf #controles_visualizador #fechar_visualizar_pdf:hover {
+    background-color: rgb(114, 0, 0)
+}
+
+#canvas_container {
+    display: flex;
+    justify-content: center;
+}
+
+::-webkit-scrollbar {
+    width: 9px;
+}
+
+::-webkit-scrollbar-button {
+    width: 9px;
+}
+
+::-webkit-scrollbar-track {
+    background: #eeeeee;
+    ;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #002864;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #004ec4;
+}

@@ -1,0 +1,59 @@
+.notificacao {
+    position: absolute;
+    white-space: nowrap;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+
+    padding: 5px;
+    border-radius: 5px;
+    border-bottom: 3px solid rgb(208, 196, 39);
+}
+
+.notificacao.pequena {
+    font-size: 1.2rem;
+}
+
+.notificacao.media {
+    font-size: 1.4rem;
+}
+
+.notificacao.grande {
+    font-size: 1.7rem;
+}
+
+.notificacao p {
+    font-weight: bold;
+    padding: 0;
+    margin: 0;
+}
+
+.notificacao.ok {
+    color: white;
+    background-color: rgb(9, 122, 9);
+}
+
+.notificacao.erro {
+    color: white;
+    background-color: rgb(204, 22, 22);
+}
+
+.notificacao.aviso {
+    color: rgb(0, 0, 0);
+    background-color: rgb(227, 231, 6);
+}
+
+.notificacao.normal {
+    color: black;
+    background-color: rgb(237, 237, 237);
+}
+
+.teste-enter-from,
+.teste-leave-to {
+    opacity: 0;
+}
+
+.teste-enter-active,
+.teste-leave-active {
+    transition: opacity 0.4s;
+}

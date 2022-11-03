@@ -1,0 +1,61 @@
+.configurar-tela {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px;
+}
+
+.opcao-menu {
+    border-bottom: 1px solid #ffd21f;
+    padding: 3px;
+}
+
+.opcao-menu .campo {
+    text-align: center;
+    padding: 4px;
+}
+
+.opcao-menu p {
+    padding: 0;
+    margin: 0;
+    color: white;
+}
+
+.opcao-menu .subtitulo {
+    padding: 3px;
+}
+
+
+.configurar-tela {
+    background-color: #1f1c1c;
+    ;
+}
+
+.selecionar-usuario {}
+
+.selecionar-usuario .campo {
+    font-size: 1rem;
+}
+
+.selecionar-usuario .questao {
+    display: inline-block;
+}
+
+.selecionar-usuario .questao p {
+    display: inline-block;
+}
+
+.selecionar-usuario .opcao {
+    display: inline-block;
+}
+
+
+.configurar-tela>.acoes {
+    display: flex;
+    justify-content: space-around;
+    padding: 3px;
+}
+
+.configurar-tela>.acoes button {
+    font-size: 1.4rem;
+}
