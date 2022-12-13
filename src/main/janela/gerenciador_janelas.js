@@ -40,7 +40,7 @@ let slotJanelaProducao = {
     /**
     * @type {[Janela]}
     */
-    slotProducao: undefined,
+    slotProducao: [],
     janelaProducaoTaskid: -1
 }
 
@@ -49,6 +49,17 @@ let slotJanelaProducao = {
  * @type {Janela}
  */
 let janelaFundo;
+
+/**
+ * Algumas coisas uteis
+ */
+let utils = {
+    /**
+     * Salva o ID do setinterval que fica fazendo a janela aparecer
+     */
+    taskidIntervaloMostraJanela: -1,
+    permiteGanharFocoJanelaPrincipal: true
+}
 
 /**
  * Realiza o startup do gerenciador de janelas
@@ -65,7 +76,7 @@ export async function iniciarGerenciadorJanelas() {
     janelaPrincipal.setParentWindow(janelaFundo.janelaElectron)
 
     // Cadastra os atalhos globais do programa, que funcionam sem precisar estar com o programa em foco
-    cadastrarAtalhosGlobais()
+    // cadastrarAtalhosGlobais()
 }
 
 
@@ -126,6 +137,17 @@ export function cadastrarHandlersJanelas() {
 
         dialog.showMessageBox(janelaQueSolicitou, propsMsg)
     })
+
+    log("Cadastrando handler: TOGGLE-PERMITIR-FOCO")
+    ipcMain.handle("TOGGLE-PERMITIR-FOCO", async (ev, boolean) => {
+        utils.permiteGanharFocoJanelaPrincipal = boolean
+    })
+
+    log(`Cadastrando handler: MINIMIZAR-PROGRAMA`)
+    ipcMain.handle("MINIMIZAR-PROGRAMA", async () => {
+        janelaPrincipal.minimize()
+        janelaFundo.janelaElectron.minimize()
+    })
 }
 
 /**
@@ -166,20 +188,33 @@ function cadastrarAtalhosGlobais() {
 
 /**
  * Realiza a abertura das telas configuradas pelo usuario
- * @param {{janelas: [tipo: String, nome: String, propriedades: {aba_id: Number}], usuarioId: Number, produto: String, usarEfeitos: Boolean}} parametrosAbertura
+ * @param {{janelas: [tipo: String, nome: String, propriedades: {aba_id: Number, abrirDesenhosAutomatico: Boolean}], usuarioId: Number, produto: {codigo: String, marca: {id: Number, descricao: String}}, usarEfeitos: Boolean}} parametrosAbertura
  */
 async function abrirTelasConfiguradas(parametrosAbertura) {
     log(`Iniciando a abertura das telas, parametros:`);
     log(parametrosAbertura);
 
+    log(`Informações das janelas`)
+    parametrosAbertura.janelas.forEach(janelaObj => console.log(janelaObj))
+
     mostraJanelaPrincipal(true)
     toggleOpacidadeJanelaPrincipal(1)
+    clearInterval(utils.taskidIntervaloMostraJanela)
     await pausa(1)
 
     log(`Definindo usuario para login no Exon...`);
     await SessaoAtual.definirLogin(parametrosAbertura.usuarioId)
 
-    let produtoCodigo = parametrosAbertura.produto
+    // Codigo do produto ex: 'HF 01'
+    let produtoCodigo = parametrosAbertura.produto.codigo
+
+    // Informações da marca do produto(no caso se for OP)
+    let produtoMarca = {
+        id: parametrosAbertura.produto.marca.id,
+        descricao: parametrosAbertura.produto.marca.descricao
+    }
+
+    console.log(`Produto selecionado: ${produtoCodigo}, ${produtoMarca}`);
 
     let janelas = parametrosAbertura.janelas
     let infoDisplayPrincipal = screen.getPrimaryDisplay().workArea;
@@ -221,7 +256,7 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
             await pausa(1)
 
             /**
-             * @type {{nome: String, tipo: String, propriedades: {aba_id: Number}}}
+             * @type {{nome: String, tipo: String, propriedades: {aba_id: Number, abrirDesenhosAutomatico: Boolean}}}
              */
             const janelaPropriedades = janelas[linha][janela]
             log(janelaPropriedades);
@@ -237,7 +272,7 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
             log(`Posição X${posicaoX}, Y: ${posicaoY}`);
 
             // Instancia um objeto janela
-            let janelaObjeto = new Janela({ heigth: 0, width: 0 }, { x: posicaoX, y: posicaoY }, janelaPropriedades.nome, { resizable: false, titleBarStyle: "hidden", movable: false, fullscreenable: false, frame: false, hasShadow: false })
+            let janelaObjeto = new Janela({ heigth: 0, width: 0 }, { x: posicaoX, y: posicaoY }, janelaPropriedades.nome, { resizable: false, titleBarStyle: "hidden", movable: false, fullscreenable: false, frame: false })
 
             // Ativa ou desativa os efeitos 
             janelaObjeto.ativarEfeitos(parametrosAbertura.usarEfeitos)
@@ -332,10 +367,22 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
 
                     // janelaObjeto.janelaElectron.webContents.openDevTools()
 
-                    // Envia a pagina a aba que ele deverá mostrar e confirma que está ok para mostrar
+                    // Define as informações do produto
+                    janelaObjeto.janelaElectron.webContents.send("DEFINIR-PRODUTO", { codigo: produtoCodigo, marca: { id: produtoMarca.id, descricao: produtoMarca.descricao } })
+
+                    // Define o ID da aba para mostrar
                     janelaObjeto.janelaElectron.webContents.send("DEFINIR-ABA-JANELA", aba_definida)
+
+                    // Nome da janela
                     janelaObjeto.janelaElectron.webContents.send("DEFINIR-NOME-JANELA", exonAbaInformacoes != undefined ? exonAbaInformacoes.descricao.trim() : janelaPropriedades.nome)
+
+                    // Envia a pagina a aba que ele deverá mostrar e confirma que está ok para mostrar
                     janelaObjeto.janelaElectron.webContents.send("OK")
+
+                    // Verifica se tem que abrir o desenho automaticamente
+                    if (janelaPropriedades.propriedades.abrirDesenhosAutomatico) {
+                        janelaObjeto.janelaElectron.webContents.send("ABRIR-DESENHO-AUTOMATICO")
+                    }
 
                     // Adiciona o objeto na lista de janelas de ficha tecnica
                     if (!janelaExistente) {
@@ -345,7 +392,7 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
                     break;
                 case "tela_producao":
                     // Se a janela de produção já tiver aberta, só continuar...
-                    if (slotJanelaProducao.slotProducao != undefined) continue;
+                    if (slotJanelaProducao.slotProducao.length > 1) continue;
 
                     log(`Tela é da produção`);
 
@@ -391,7 +438,7 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
                     // Avisa a pagina que esta tudo ok para mostrar
                     // janelaObjeto.janelaElectron.webContents.openDevTools()
                     janelaObjeto.janelaElectron.webContents.send("OK")
-                    slotJanelaProducao.slotProducao = janelaObjeto
+                    slotJanelaProducao.slotProducao.push(janelaObjeto)
 
                     slotJanelaProducao.janelaProducaoTaskid = setInterval(async () => {
                         janelaObjeto.janelaElectron.webContents.send("ESCONDER-PAGINA", true)
@@ -403,24 +450,27 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
                             await janelaObjeto.carregarJanela()
                             janelaObjeto.janelaElectron.webContents.send("OK")
                         }
-                    }, 15000);
+                    }, 60000);
                     break;
                 default:
                     log(`Tela sem definição: ${janelaPropriedades.tipo}`);
                     break;
             }
-
-            janelaObjeto.janelaElectron.on("focus", (ev) => {
-                janelaPrincipal.focus()
-                janelaPrincipal.moveTop()
-            })
         }
     }
 
     mostraNotificacao(`Carregamento de slots concluido`, 3, "ok")
-    janelaPrincipal.moveTop()
     janelaFundo.janelaElectron.setFullScreen(true)
     toggleOpacidadeJanelaPrincipal(0.7)
+
+    janelaPrincipal.moveTop()
+
+    utils.taskidIntervaloMostraJanela = new setInterval(() => {
+        if (utils.permiteGanharFocoJanelaPrincipal) {
+            priorizarFocoTelaPrincipal()
+        }
+    }, 500)
+
     return true;
 }
 
@@ -431,22 +481,25 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
  */
 async function fecharTodasJanelas(parametros = { ativarEfeitos: true }) {
     log(`Fechando janelas abertas...`);
+
+    clearInterval(utils.taskidIntervaloMostraJanela)
     for (let janelaFicha of slotsFichaTecnica.slotsFichas) {
         janelaFicha.janelaElectron.webContents.send("ESCONDER-PAGINA", true)
         if (parametros.ativarEfeitos) await janelaFicha.aplicarEfeitoFechar(1)
         janelaFicha.janelaElectron.close()
     }
 
-    if (slotJanelaProducao.slotProducao != undefined) {
-        slotJanelaProducao.slotProducao.janelaElectron.webContents.send("ESCONDER-PAGINA", true)
-        if (parametros.ativarEfeitos) await slotJanelaProducao.slotProducao.aplicarEfeitoFechar(1)
-        slotJanelaProducao.slotProducao.janelaElectron.close()
+    for (const slotProducao of slotJanelaProducao.slotProducao) {
+        slotProducao.janelaElectron.webContents.send("ESCONDER-PAGINA", true)
+        if (parametros.ativarEfeitos) await slotProducao.aplicarEfeitoFechar(1)
+        slotProducao.janelaElectron.close()
         clearInterval(slotJanelaProducao.janelaProducaoTaskid)
     }
 
     slotsFichaTecnica.slotsFichas = []
-    slotJanelaProducao.slotProducao = null
+    slotJanelaProducao.slotProducao = []
     log(`Janelas fechadas`);
+    janelaPrincipal.setAlwaysOnTop(false, "normal")
     return true
 }
 
@@ -518,12 +571,15 @@ async function criarJanelaFundo() {
         <meta charset='utf-8'>
         <meta http-equiv='X-UA-Compatible' content='IE=edge'>
         <meta name='viewport' content='width=device-width, initial-scale=1'>
+        <style>
+            * {
+            -webkit-user-select: none;
+            user-select: none;
+            } 
+        </style>
     </head>
     
     <body>
-        <div class="botoes">
-            <p>TECLA F1 - ABRIR/FECHAR MENU</p>
-        </div>
     </body>
     
     </html>
@@ -658,6 +714,31 @@ async function toggleMostrarJanelaPrincipal(bool) {
         janelaPrincipal.hide()
     } else {
         janelaPrincipal.show()
+    }
+}
+
+/**
+ * Traz pra frente a janela principal acima de todos os outros slots
+ */
+function priorizarFocoTelaPrincipal() {
+
+    let possuiAlgumSlotFocado = false
+    for (const slotFicha of slotsFichaTecnica.slotsFichas) {
+        if (slotFicha.janelaElectron.isFocused()) possuiAlgumSlotFocado = true
+    }
+
+    for (const slotProducao of slotJanelaProducao.slotProducao) {
+        if (slotProducao.janelaElectron.isFocused()) possuiAlgumSlotFocado = true
+    }
+
+    if (janelaFundo.janelaElectron.isFocused()) possuiAlgumSlotFocado = true
+
+    if (possuiAlgumSlotFocado) {
+        console.log(`Janela tem algum foco, focando menu!`)
+        janelaPrincipal.moveTop()
+        // janelaPrincipal.setFocusable(true)
+    } else {
+        console.log(`Nenhuma janela com foco, ignorando...!`);
     }
 }
 

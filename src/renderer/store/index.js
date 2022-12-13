@@ -23,14 +23,30 @@ export default createStore({
       fechando_slots: false,
       modoMinimizado: false,
       modoAutomatico: false,
+      ultimoProdutoDigitado: '',
       producaoPendentes: {
         listaProdutos: [],
         indexAberto: 0,
         taskidAtualizar: -1
+      },
+      /**
+       * Informações da sessão atual
+       */
+      sessaoInfo: {
+        modoAutomatico: false,
+        ultimoProdutoAberto: {
+          codigo: '',
+          marca: {
+            id: '',
+            descricao: ''
+          }
+        },
+        restaurarSessao: false
       }
     },
     backend_api: {
       url: 'http://192.168.1.10:8003/projeto-usinagem'
+      // url: 'http://localhost:8003/projeto-usinagem'
     }
   },
   getters: {
@@ -156,11 +172,17 @@ export default createStore({
       await ipcRenderer.invoke("TOGGLE-MODO-MINIMIZADO", bool)
     },
     /**
+     * Minimizar o programa
+     */
+    async minimizarPrograma() {
+      await ipcRenderer.invoke("MINIMIZAR-PROGRAMA")
+    },
+    /**
      * Realiza a abertura dos slots
-     * @param {String} produtoDesejado Nome do produto
+     * @param {{codigo: String, marca: {id: Number, descricao: String}}} produtoDados Dados do produto para mostrar
      * @return {Boolean} Status se conseguiu abrir os slots
      */
-    async abrirJanelas(store, produtoDesejado) {
+    async abrirJanelas(store, produtoDados) {
       if (store.state.status.abrindo_slots) {
         store.dispatch("mostrarNotificacao", {
           msg: "Aguarde a abertura!",
@@ -179,10 +201,14 @@ export default createStore({
       });
 
       await pausa(1);
+
       let configuracao = {
         janelas: removerReatividade(store.state.configuracao.abasConfiguradas),
         usuarioId: store.state.configuracao.usuarioIdExon,
-        produto: produtoDesejado,
+        produto: {
+          codigo: produtoDados.codigo,
+          marca: produtoDados.marca
+        },
         usarEfeitos: store.state.configuracao.outros.ativarEfeitos
       };
       console.log(configuracao);
@@ -199,13 +225,16 @@ export default createStore({
         store.state.status.slots_abertos = true;
 
         store.dispatch("toggleModoMinimizado", true)
-        return true
+        store.state.status.sessaoInfo.ultimoProdutoAberto.codigo = produtoDados.codigo
+        store.state.status.sessaoInfo.ultimoProdutoAberto.marca = produtoDados.marca
       } else {
         console.log(`Erro na abertura`);
         store.state.status.abrindo_slots = false;
         store.dispatch("toggleModoMinimizado", false)
-        return false
       }
+
+      // Salvar a sessão
+      store.dispatch('salvarDadosSessao')
     },
     /**
      * Navega pelos produtos que existem nas OPs da linha configurada
@@ -235,7 +264,10 @@ export default createStore({
       }
 
       let produtoCodigo = produtoObjeto.produto_codigo.replace("PIU", "")
-      await store.dispatch("abrirJanelas", produtoCodigo)
+      let produtoMarcaDesc = produtoObjeto.marca_descricao
+      let produtoMarcaId = produtoObjeto.marca_id
+
+      await store.dispatch("abrirJanelas", { codigo: produtoCodigo, marca: { id: produtoMarcaId, descricao: produtoMarcaDesc } })
     },
     /**
      * Avança para o proximo produto na lista de ops
@@ -338,6 +370,50 @@ export default createStore({
       }
 
       return false
+    },
+    /**
+     * Salva dados da sessão atual num arquivo de configuração
+     */
+    salvarDadosSessao(store) {
+      let arquivoSessao = path.resolve("./", "sessao.json")
+
+      fs.writeFileSync(arquivoSessao, JSON.stringify(store.state.status.sessaoInfo))
+    },
+    /**
+     * Carrega o arquivo de sessão atual
+     */
+    async carregarSessaoAtual(store) {
+      let arquivoSessao = path.resolve("./", "sessao.json")
+
+      if (fs.existsSync(arquivoSessao)) {
+
+        try {
+          store.state.status.sessaoInfo = JSON.parse(fs.readFileSync(arquivoSessao))
+
+          let dadosSessao = store.state.status.sessaoInfo
+          console.log(dadosSessao);
+
+          if (dadosSessao.restaurarSessao) {
+            console.log(`Restaurando sessão anterior...`);
+            dadosSessao.restaurarSessao = false
+
+            if (dadosSessao.modoAutomatico) {
+              store.state.status.modoAutomatico = true
+            } else {
+              store.state.status.modoAutomatico = false
+            }
+
+            await store.dispatch("abrirJanelas", { codigo: dadosSessao.ultimoProdutoAberto.codigo, marca: { id: dadosSessao.ultimoProdutoAberto.marca.id, descricao: dadosSessao.ultimoProdutoAberto.marca.descricao } })
+          } else {
+            console.log(`Não é necessario restaurar a ultima sessão...`);
+          }
+        } catch (ex) {
+          console.log(ex);
+          console.log(`Ocorreu um erro ao ler o arquivo de sessão`);
+        }
+      } else {
+        console.log(`Arquivo de sessão não existe...`);
+      }
     }
   },
   modules: {

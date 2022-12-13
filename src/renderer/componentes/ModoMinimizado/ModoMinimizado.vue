@@ -9,34 +9,42 @@
         <div class="atual">
             <p class="tipo">Atual</p>
             <p class="produto">{{ getProduto('atual').produto }}</p>
-            <p class="marca">{{ `${getProduto('anterior').marca}` }}</p>
+            <p class="marca">{{ `${getProduto('atual').marca}` }}</p>
         </div>
         <div class="opcao proximo" @click="clicouPaginador('proximo')" v-if="statusModoAutomatico">
             <p class="tipo">Proximo</p>
             <p class="produto">{{ `${getProduto('proximo').produto}` }}</p>
-            <p class="marca">{{ `${getProduto('anterior').marca}` }}</p>
+            <p class="marca">{{ `${getProduto('proximo').marca}` }}</p>
         </div>
     </div>
 
-    <button class="voltar" @click="$store.dispatch('toggleModoMinimizado', false)">Menu</button>
+    <div class="acoes">
+        <button @click="$store.dispatch('toggleModoMinimizado', false)">Menu</button>
+        <button @click="$store.dispatch('minimizarPrograma')">Minimizar Programa</button>
+    </div>
 </template>
 
 <style scoped>
-.voltar {
-    position: absolute;
-    left: 0;
-    top: 0;
+.acoes {
+    display: flex;
+    justify-content: space-between;
+}
+
+.acoes button {
     border: none;
+    color: black;
     font-weight: bold;
-    outline: none;
-    border-radius: 3px;
-    background-color: gold;
-    padding: 5px;
+    padding: 3px;
+}
+
+.acoes button:hover {
+    color: white;
+    background-color: black;
     cursor: pointer;
 }
 
-.voltar:hover {
-    background-color: rgb(208, 199, 199);
+.acoes button:not(:last-child) {
+    margin-right: 10px;
 }
 
 .paginador {
@@ -121,28 +129,33 @@ export default {
          */
         getProduto(posicao) {
             let produtoObjeto = {}
-            switch (posicao) {
-                case "anterior":
-                    produtoObjeto = this.$store.getters.getProdutoAnterior
-                    break;
-                case "atual":
-                    produtoObjeto = this.$store.getters.getProdutoAtual
-                    break;
-                case "proximo":
-                    produtoObjeto = this.$store.getters.getProdutoProximo
-                    break;
-                default:
-                    break;
-            }
 
-            if (produtoObjeto != null && Object.keys(produtoObjeto) != 0) {
-                return {
-                    produto: produtoObjeto.produto_codigo.replace("PIU", ""),
-                    marca: produtoObjeto.descricao.replace("HIPPER FREIOS", "HF")
+            if (this.$store.state.status.modoAutomatico) {
+                switch (posicao) {
+                    case "anterior":
+                        produtoObjeto = this.$store.getters.getProdutoAnterior
+                        break;
+                    case "atual":
+                        produtoObjeto = this.$store.getters.getProdutoAtual
+                        break;
+                    case "proximo":
+                        produtoObjeto = this.$store.getters.getProdutoProximo
+                        break;
+                    default:
+                        break;
                 }
             } else {
-                return ''
+                produtoObjeto = {
+                    produto_codigo: this.$store.state.status.ultimoProdutoDigitado,
+                    marca_descricao: ''
+                }
             }
+
+            return {
+                produto: produtoObjeto.produto_codigo.replace("PIU", ""),
+                marca: produtoObjeto.marca_descricao.replace("HIPPER FREIOS", "HF")
+            }
+
         },
         /**
          * Alternar entre os produtos listados nas OPs

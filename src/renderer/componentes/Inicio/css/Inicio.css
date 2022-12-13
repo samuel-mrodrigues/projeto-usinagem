@@ -47,3 +47,10 @@ input:disabled {
   margin: 0px;
   vertical-align: bottom;
 }
+
+.teclado-virtual {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+}

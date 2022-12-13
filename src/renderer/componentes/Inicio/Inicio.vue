@@ -11,9 +11,18 @@
 
     <p class="titulo">FICHA TÉCNICA</p>
     <div class="digita-produto">
-      <input style="margin-top: 20px" type="text" placeholder="HF 01..." v-model="produto_digitado"
-        :disabled="$store.state.status.abrindo_slots || $store.state.status.fechando_slots" maxlength="12"
-        ref="campo_produto" />
+      <div @mouseenter="toggleTecladoVirtual(true)" @mouseleave="toggleTecladoVirtual(false)">
+        <input style="margin-top: 20px" type="text" placeholder="HF 01..." v-model="produto_digitado"
+          :disabled="$store.state.status.abrindo_slots || $store.state.status.fechando_slots" maxlength="12"
+          ref="campo_produto" />
+
+        <div class="teclado-virtual" v-if="tecladoVirtual.mostrar">
+          <TecladoVirtualVue v-on:tecla-digitada="(tecla) => produto_digitado += tecla"
+            v-on:apagar="() => produto_digitado = produto_digitado.substring(0, produto_digitado.length - 1)"
+            v-on:tecla="teste" />
+        </div>
+
+      </div>
       <button class="botao-grande" @click="solicitarAbrirJanelas()"
         :disabled="$store.state.status.abrindo_slots || $store.state.status.fechando_slots" title="Inicia consulta">
         CONSULTAR
@@ -52,17 +61,13 @@
 <script>
 /* eslint-disable */
 import { ipcRenderer } from "electron";
-
 import MenuConfigurar from "../ConfiguraAbas/MenuConfigurar/MenuConfigurar.vue";
-
+import TecladoVirtualVue from "../TeladoVirtual/TecladoVirtual.vue";
 import { cadastrarListener, excluirListener } from "../../utils/Listeners/JsListeners.js"
-
-import axios from "axios"
 
 export default {
   name: "App",
-  methods: {},
-  components: { MenuConfigurar },
+  components: { MenuConfigurar, TecladoVirtualVue },
   data() {
     return {
       produto_digitado: "",
@@ -76,6 +81,9 @@ export default {
       },
       listenersAtivos: {
         apertouEnter: -1
+      },
+      tecladoVirtual: {
+        mostrar: false
       }
     };
   },
@@ -97,6 +105,7 @@ export default {
   },
   unmounted() {
     excluirListener(this.listenersAtivos.apertouEnter)
+    this
   },
   watch: {
     produto_digitado(novo) {
@@ -116,10 +125,20 @@ export default {
     },
   },
   methods: {
+    teste() {
+      console.log(this.$refs.campo_produto.focus());
+    },
     async eventoConfigurarAlterado(dadosObjeto) {
       console.log(`Novos dados de configurações recebidos`);
       console.log(dadosObjeto);
       this.config.dadosConfigurados = dadosObjeto;
+    },
+    /**
+     * Mostra ou oculta o teclado virtual para digitar o produto
+     * @param {Boolean} bool Mostrar ou ocultar
+     */
+    toggleTecladoVirtual(bool) {
+      this.tecladoVirtual.mostrar = bool
     },
     fecharJanelaConfigurar() {
       this.janelasFlutuantes.menuConfigurar.aberta = false;
@@ -143,16 +162,22 @@ export default {
         return;
       }
 
-      let statusAbertura = await this.$store.dispatch("abrirJanelas", this.produto_digitado)
       this.$store.state.status.modoAutomatico = false
+      this.$store.state.status.sessaoInfo.modoAutomatico = false
+      this.$store.state.status.ultimoProdutoDigitado = this.produto_digitado
+      await this.$store.dispatch("abrirJanelas", { codigo: this.produto_digitado, marca: { id: -1, descricao: "" } })
     },
     async abrirAutomatico() {
       let existeProdutoAtual = this.$store.getters.getProdutoAtual
 
       if (existeProdutoAtual != undefined) {
         let produtoCodigo = existeProdutoAtual.produto_codigo.replace("PIU", "")
+        let produtoMarcaId = existeProdutoAtual.marca_id
+        let produtoMarcaDesc = existeProdutoAtual.marca_descricao
+
         this.$store.state.status.modoAutomatico = true
-        this.$store.dispatch("abrirJanelas", produtoCodigo)
+        this.$store.state.status.sessaoInfo.modoAutomatico = true
+        this.$store.dispatch("abrirJanelas", { codigo: produtoCodigo, marca: { id: produtoMarcaId, descricao: produtoMarcaDesc } })
       } else {
         this.$store.dispatch("mostrarNotificacao", {
           msg: "Não foi possível pegar as OPs desse recurso!",

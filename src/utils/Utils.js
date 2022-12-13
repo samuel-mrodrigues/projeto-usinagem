@@ -32,7 +32,7 @@ export const PropriedadesPrograma = {
     /**
      * Se a aplicação está rodando no modo desenvolvedor(rodando no electron:serve)
      */
-    modoDev: true,
+    modoDev: false,
     /**
      * Tempo em minutos que o programa deve checar por atualizações novas
      */

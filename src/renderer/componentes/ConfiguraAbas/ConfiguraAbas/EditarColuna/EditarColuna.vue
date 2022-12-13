@@ -31,6 +31,17 @@
           </select>
         </span>
       </div>
+
+      <div class="campo" v-if="conteudoSelecionado == 'ficha_tecnica'">
+        <span class="questao">Abrir desenhos automaticos?</span>
+        <span class="opcao">
+          <select v-model="opcoesPossiveis.fichaTecnica.abrirDesenhosAutomatico">
+            <option :value="true">Sim</option>
+            <option :value="false">Não</option>
+          </select>
+        </span>
+      </div>
+
     </div>
     <div class="acoes">
       <button @click="salvar()" class="botao botao-ok" title="Salvar mudanças">
@@ -74,16 +85,22 @@ export default {
       opcoesPossiveis: {
         vazio: {},
         fichaTecnica: {
-          aba_id:
-            this.propColunaObjeto.propriedades != undefined
-              ? this.propColunaObjeto.propriedades.aba_id
-              : null,
+          aba_id: '',
+          abrirDesenhosAutomatico: ''
         },
       },
     };
   },
   mounted() {
     this.getAbasFichaTecnica();
+
+    if (this.propColunaObjeto.propriedades != undefined) {
+      let aba_id = this.propColunaObjeto.propriedades.aba_id != undefined ? this.propColunaObjeto.propriedades.aba_id : -1
+      let abrirAutomatico = this.propColunaObjeto.propriedades.abrirDesenhosAutomatico != undefined ? this.propColunaObjeto.propriedades.abrirDesenhosAutomatico : false
+
+      this.opcoesPossiveis.fichaTecnica.aba_id = aba_id
+      this.opcoesPossiveis.fichaTecnica.abrirDesenhosAutomatico = abrirAutomatico
+    }
   },
   watch: {
     "editando.colunaObjeto.nome"(novo) {
@@ -146,6 +163,7 @@ export default {
           tipo_tela.tipo = "ficha_tecnica";
           tipo_tela.propriedades.aba_id =
             this.opcoesPossiveis.fichaTecnica.aba_id;
+          tipo_tela.propriedades.abrirDesenhosAutomatico = this.opcoesPossiveis.fichaTecnica.abrirDesenhosAutomatico
           break;
         case "tela_producao":
           tipo_tela.tipo = "tela_producao";

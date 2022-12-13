@@ -71,6 +71,9 @@ export default {
 
     // Carrega o arquivo JSON de configuração
     await this.carregarConfig()
+
+    // Carregar a sessão atual se precisar...
+    await this.$store.dispatch("carregarSessaoAtual")
   },
   methods: {
     /**

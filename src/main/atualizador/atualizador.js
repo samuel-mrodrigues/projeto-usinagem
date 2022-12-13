@@ -120,10 +120,10 @@ async function atualizarAgora(novaVersao) {
 
     // Passa por cada arquivo existente e salva em seu lugar correto
     arquivosDescompactados.forEach(arquivoDados => {
-        arquivoDados.name = arquivoDados.name.replaceAll("/", "\\")
+        arquivoDados.name = arquivoDados.name.replaceAll("\\", "/")
 
-        let pastaArquivo = arquivoDados.name.substring(0, arquivoDados.name.lastIndexOf("\\"))
-        let arquivoNome = arquivoDados.name.substring(arquivoDados.name.lastIndexOf("\\") + 1, arquivoDados.name.length)
+        let pastaArquivo = arquivoDados.name.substring(0, arquivoDados.name.lastIndexOf("/"))
+        let arquivoNome = arquivoDados.name.substring(arquivoDados.name.lastIndexOf("/") + 1, arquivoDados.name.length)
 
         let localSalvamento = path.resolve(getDiretorioPrograma(), pastaArquivo)
 
@@ -145,8 +145,26 @@ async function atualizarAgora(novaVersao) {
     }))
 
     mostraNotificacao(`Atualização concluida, reiniciando programa em 3 segundos...`, 3)
+    alterarArquivoDeSessao()
     await pausa(3)
     reiniciar()
+}
+
+function alterarArquivoDeSessao() {
+    let arquivoSessao = path.resolve(getDiretorioPrograma(), 'sessao.json')
+
+    if (fs.existsSync(arquivoSessao)) {
+
+        try {
+            let dadosSessao = JSON.parse(fs.readFileSync(arquivoSessao))
+            dadosSessao.restaurarSessao = true
+
+            fs.writeFileSync(arquivoSessao, JSON.stringify(dadosSessao))
+        } catch (ex) {
+            console.log(ex);
+            console.log(`Erro ao atualizar arquivo de sessão...`);
+        }
+    }
 }
 
 // Reiniciar o programa

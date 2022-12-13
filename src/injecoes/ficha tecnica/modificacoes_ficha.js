@@ -4,6 +4,21 @@ console.log(`----[ MODIFICAÇÃO DA FICHA TECNICA ]-------`);
 let aba_principal = ""
 let nome_decorativo_aba = ""
 
+// Informações do produto aberto
+let produtoDados = {
+    codigo: '',
+    marca: {
+        id: -1,
+        descricao: ''
+    }
+}
+
+// Define as informações do produto atual aberto
+ipcRenderer.on("DEFINIR-PRODUTO", async (evento, dadosProduto) => {
+    produtoDados.codigo = dadosProduto.codigo
+    produtoDados.marca = dadosProduto.marca
+})
+
 // Define qual aba será mostrada na janela que esse script for inserido
 ipcRenderer.on("DEFINIR-ABA-JANELA", async (evento, aba_id) => {
     aba_principal = aba_id
@@ -28,7 +43,11 @@ ipcRenderer.on("ESCONDER-PAGINA", async (evento, esconder = true) => {
 })
 
 ipcRenderer.on("ESTA-MOSTRANDO-PDF", async (ev) => {
-    ev.re
+
+})
+
+ipcRenderer.on("ABRIR-DESENHO-AUTOMATICO", async (ev) => {
+    abrirDesenhoAutomatico()
 })
 
 // Altera opacidade da pagina inteira
@@ -36,6 +55,84 @@ function toggleConteudo(bool) {
     for (const elemento of document.getElementsByTagName("body")) {
         elemento.style.opacity = bool ? '100%' : '0%'
         elemento.style.overflow = bool ? '' : 'hidden'
+    }
+}
+// Automaticamente encontra um link com desenho na pagina e tenta abri-lo!
+function abrirDesenhoAutomatico() {
+    console.log(`Tentando abrir o desenho automaticamente...`);
+
+    // Pega a div que contem as informações do produto atual
+    let divDados = document.querySelector(`#ficha-tecnica-aba-${aba_principal}`)
+
+    if (divDados == undefined) {
+        console.log(`Ignorando abertura automatica de desenho pois n foi encotnrado a aba principal`);
+        return;
+    }
+
+    // Possiveis links de PDFs encontrados para abrir
+    let linksEncontrados = []
+
+    // Verifico se a ficha atual tem o seletor de marca, pois preciso tratar diferente como busco os links
+
+    // Se existir, procuro no campo da marca atualmente selecionada
+    if (existeSeletorDeMarca()) {
+
+        // Pega todos os elemnentos com links no html
+        divDados.querySelectorAll(".campos-ficha_tecnica").forEach(campoFicha => {
+
+            // Somente verifica se o campo não estiver oculto
+            if (campoFicha.getAttribute("data-marca-id") == produtoDados.marca.id && campoFicha.style.display != 'none') {
+                // Se não estiver oculto, procura algum elemento de link dentro dele
+
+                // Passa por todos os elementos a e verifica se é um .pdf
+                campoFicha.querySelectorAll('a').forEach(elementoLink => {
+                    if (elementoLink.href.toLowerCase().indexOf(".pdf") != -1) {
+                        linksEncontrados.push(elementoLink.href)
+                    }
+                })
+            }
+        })
+    } else {
+        let elementosLinks = divDados.querySelectorAll('a')
+
+        // Passa por todos os elementos de links e encontra o primeiro que tiver um .pdf no fim
+        for (let elementoLink of elementosLinks) {
+            if (elementoLink.href.toLowerCase().indexOf(".pdf") != -1) {
+                linksEncontrados.push(elementoLink.href)
+            }
+        }
+    }
+
+
+    // Se achou algum link, tenta abrir o PDF dele..
+    if (linksEncontrados.length != 0) {
+        console.log(`Total de links encontrados: ${linksEncontrados.length}, usando o 1.o encontrado`);
+
+        let desejoEscolhido = linksEncontrados[0]
+        console.log(`Link de desenho encontrado: ${desejoEscolhido}`);
+        abrirPDF(desejoEscolhido)
+    } else {
+        console.log(`Nenhum link de desenho encontrado...`);
+    }
+}
+
+// Se a aba tiver um campo para selecionar a marca, automaticamente irá definir a marca pela que esta setado na variavel das informações do produto
+function selecionarMarcaAutomatico() {
+    if (produtoDados.marca.id == -1) {
+        console.log(`Produto sem marca, ignorando seleção automatica...`);
+        return;
+    }
+
+    let seletorMarca = document.querySelector("select.select-marcas-ficha-tecnica")
+
+    if (seletorMarca != undefined) {
+        console.log(`Selecionando marca padrão ${produtoDados.marca.descricao} no seletor de marca...`);
+
+        seletorMarca.value = produtoDados.marca.id
+
+        seletorMarca.dispatchEvent(new Event('change'))
+    } else {
+        console.log(`Sem campo de seleção de marca, ignorando...`);
     }
 }
 
@@ -81,7 +178,7 @@ function removerAbas() {
         elementos_remover.push(possivelElemento)
     }
 
-    elementos_remover.forEach(elemento => elemento.style.display = 'none')
+    elementos_remover.forEach(elemento => elemento.remove())
 
     // Se não achou a aba principal, mostrar um aviso
     if (!encontrouAbaPrincipal) {
@@ -142,6 +239,40 @@ async function inicio() {
     // Remove o header do "Visualizar"
     let elementoHeader = document.querySelector("#page-container > div > h1")
     if (elementoHeader != undefined) elementoHeader.remove()
+
+    // Faz umas modificações no seletor de marca desse cara
+    seletorMarca()
+
+    // Seleciona a marca automaticamente
+    selecionarMarcaAutomatico()
+}
+
+/**
+ * Algumas modificações na seleção de marcas
+ */
+function seletorMarca() {
+    /**
+     * @type {HTMLElement}
+     */
+    let seletorMarca = document.querySelector("select.select-marcas-ficha-tecnica")
+    if (seletorMarca != undefined) {
+        console.log(`Aplicando modificações do seletor de marca...`);
+
+        seletorMarca.onfocus = () => {
+            ipcRenderer.invoke("TOGGLE-PERMITIR-FOCO", false)
+        }
+
+        seletorMarca.onblur = () => {
+            ipcRenderer.invoke("TOGGLE-PERMITIR-FOCO", true)
+        }
+    }
+}
+
+/**
+ * Retorna true ou false se existe o seletor de marcas nessa ficha atual
+ */
+function existeSeletorDeMarca() {
+    return document.querySelector("select.select-marcas-ficha-tecnica") != undefined
 }
 
 // Mantenho um estado de qual PDF está sendo visualizado, junto com outras informações uteis
