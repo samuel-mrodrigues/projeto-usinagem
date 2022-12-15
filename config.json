@@ -1,0 +1,36 @@
+{
+ "usuarioIdExon": 1515,
+ "abasConfiguradas": [
+  [
+   {
+    "nome": "NOVO SLOT 1",
+    "tipo": "ficha_tecnica",
+    "propriedades": {
+     "aba_id": 15,
+     "abrirDesenhosAutomatico": true
+    }
+   },
+   {
+    "nome": "NOVO SLOT 2",
+    "tipo": "ficha_tecnica",
+    "propriedades": {
+     "aba_id": 16,
+     "abrirDesenhosAutomatico": true
+    }
+   }
+  ],
+  [
+   {
+    "nome": "NOVO SLOT 3",
+    "tipo": "ficha_tecnica",
+    "propriedades": {
+     "aba_id": 8,
+     "abrirDesenhosAutomatico": true
+    }
+   }
+  ]
+ ],
+ "outros": {
+  "ativarEfeitos": false
+ }
+}

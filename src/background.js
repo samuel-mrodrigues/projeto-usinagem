@@ -31,11 +31,20 @@ ipcMain.handle("DIRETORIO-PROGRAMA", (evento) => {
 // Cadastra os handlers das janelas...
 cadastrarHandlersJanelas()
 
+// Cadastra outros tipos de handlers...
+cadastrarHandlersOutros();
+
 // Opções se estiver no modo dev
 if (!PropriedadesPrograma.modoDev) {
 
   // Iniciar o atualizador
   iniciarAtualizador()
+}
+
+function cadastrarHandlersOutros() {
+  ipcMain.handle("DIRETORIO-ARQUIVO", (ev) => {
+    return getDiretorioPrograma()
+  })
 }
 
 async function carregarJanelaPrincipal() {
@@ -56,6 +65,8 @@ async function carregarJanelaPrincipal() {
     resizable: false,
     fullscreenable: false
   })
+
+  // janela_principal.webContents.openDevTools();
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode

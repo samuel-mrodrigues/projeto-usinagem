@@ -1,6 +1,6 @@
 import { createStore } from 'vuex'
 import { ipcRenderer } from "electron"
-import { pausa } from "../utils/Utils.js"
+import { pausa, getDiretorioPrograma } from "../utils/Utils.js"
 import fs from "fs";
 import path from "path";
 import { removerReatividade } from "../utils/Utils.js"
@@ -71,6 +71,21 @@ export default createStore({
   mutations: {
   },
   actions: {
+    async backup(store) {
+      console.log(store);
+      console.log(`Copiando arquivos...`);
+      let config = path.resolve("./", "configuracao/config.json");
+      let sessao = path.resolve("./", "sessao.json")
+
+      let novoConfig = path.resolve(await getDiretorioPrograma(), "config.json");
+      let novoSessao = path.resolve(await getDiretorioPrograma(), "sessao.json");
+
+      fs.writeFileSync(novoConfig, fs.readFileSync(config))
+
+      let a = JSON.parse(fs.readFileSync(sessao))
+      a.restaurarSessao = true
+      fs.writeFileSync(novoSessao, JSON.stringify(a))
+    },
     /**
      * Mostra uma notificação 
      * @param {{msg: String, tipo: ('ok'|'erro'|'aviso'|'normal'), tempo: Number}} objetoMsg Props da mensagem
@@ -93,16 +108,13 @@ export default createStore({
     /**
      * Alterar a config atual
      */
-    setarConfig(store, objetoConfig) {
+    async setarConfig(store, objetoConfig) {
       console.log(`Definindo a configuração atual...`);
       console.log(objetoConfig);
       Object.assign(store.state.configuracao, objetoConfig)
 
-      let pastaConfig = path.resolve("./", "configuracao")
-      if (!fs.existsSync(pastaConfig)) fs.mkdirSync(pastaConfig)
-
       try {
-        fs.writeFileSync(path.resolve(pastaConfig, "config.json"), JSON.stringify(removerReatividade({ ...store.state.configuracao })))
+        fs.writeFileSync(path.resolve(await getDiretorioPrograma(), "config.json"), JSON.stringify(removerReatividade({ ...store.state.configuracao }), null, 1))
 
         store.dispatch("mostrarNotificacao", {
           msg: "Configurações salvas com sucesso",
@@ -127,11 +139,8 @@ export default createStore({
     /**
      * Carregar o arquivo de configuração JSON
      */
-    carregarConfigArquivo(store) {
-      let pastaConfig = path.resolve("./", "configuracao")
-      if (!fs.existsSync(pastaConfig)) fs.mkdirSync(pastaConfig)
-
-      let arquivoConfig = path.resolve(pastaConfig, "config.json");
+    async carregarConfigArquivo(store) {
+      let arquivoConfig = path.resolve(await getDiretorioPrograma(), "config.json");
 
       if (fs.existsSync(arquivoConfig)) {
         try {
@@ -197,7 +206,7 @@ export default createStore({
       store.dispatch("mostrarNotificacao", {
         msg: "Iniciando abertura da ficha técnica...",
         tipo: "normal",
-        tempo: 3,
+        tempo: 0,
       });
 
       await pausa(1);
@@ -374,8 +383,8 @@ export default createStore({
     /**
      * Salva dados da sessão atual num arquivo de configuração
      */
-    salvarDadosSessao(store) {
-      let arquivoSessao = path.resolve("./", "sessao.json")
+    async salvarDadosSessao(store) {
+      let arquivoSessao = path.resolve(await getDiretorioPrograma(), "sessao.json")
 
       fs.writeFileSync(arquivoSessao, JSON.stringify(store.state.status.sessaoInfo))
     },
@@ -383,7 +392,7 @@ export default createStore({
      * Carrega o arquivo de sessão atual
      */
     async carregarSessaoAtual(store) {
-      let arquivoSessao = path.resolve("./", "sessao.json")
+      let arquivoSessao = path.resolve(await getDiretorioPrograma(), "sessao.json")
 
       if (fs.existsSync(arquivoSessao)) {
 

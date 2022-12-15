@@ -27,7 +27,7 @@ export const PropriedadesPrograma = {
          * URL do endpoint
          */
         Url: `http://192.168.1.10:8003/projeto-usinagem`
-        // Url: `http://localhost:8003/projeto-usinagem`
+        // Url: `http://localhost:8003/projeto-usinagem` 
     },
     /**
      * Se a aplicação está rodando no modo desenvolvedor(rodando no electron:serve)

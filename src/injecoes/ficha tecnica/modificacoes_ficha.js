@@ -50,6 +50,10 @@ ipcRenderer.on("ABRIR-DESENHO-AUTOMATICO", async (ev) => {
     abrirDesenhoAutomatico()
 })
 
+ipcRenderer.on("DESENHO-LINK", async (ev) => {
+    ipcRenderer.send("DESENHO-LINK-RESPOSTA", visualizador_opcoes.pdf_ultimo_aberto.caminho);
+})
+
 // Altera opacidade da pagina inteira
 function toggleConteudo(bool) {
     for (const elemento of document.getElementsByTagName("body")) {
@@ -58,7 +62,7 @@ function toggleConteudo(bool) {
     }
 }
 // Automaticamente encontra um link com desenho na pagina e tenta abri-lo!
-function abrirDesenhoAutomatico() {
+async function abrirDesenhoAutomatico() {
     console.log(`Tentando abrir o desenho automaticamente...`);
 
     // Pega a div que contem as informações do produto atual
@@ -66,6 +70,7 @@ function abrirDesenhoAutomatico() {
 
     if (divDados == undefined) {
         console.log(`Ignorando abertura automatica de desenho pois n foi encotnrado a aba principal`);
+        ipcRenderer.send("STATUS-DESENHOAUTOMATICO", false);
         return;
     }
 
@@ -110,9 +115,23 @@ function abrirDesenhoAutomatico() {
 
         let desejoEscolhido = linksEncontrados[0]
         console.log(`Link de desenho encontrado: ${desejoEscolhido}`);
-        abrirPDF(desejoEscolhido)
+
+        // O status contem true se o pdf foi encontrado e aberto, caso contrario será false
+        let statusAbrir = await abrirPDF(desejoEscolhido, false)
+        ipcRenderer.send("STATUS-DESENHOAUTOMATICO", statusAbrir);
+
     } else {
         console.log(`Nenhum link de desenho encontrado...`);
+
+        if (existeSeletorDeMarca()) {
+            if (produtoDados.marca.id == -1) {
+                console.log(`Permitindo a visiblidade da aba pois pois seletor de marcas...`);
+                ipcRenderer.send("STATUS-DESENHOAUTOMATICO", true);
+                return;
+            }
+        }
+
+        ipcRenderer.send("STATUS-DESENHOAUTOMATICO", false);
     }
 }
 
@@ -344,22 +363,28 @@ async function renderizarPdf(convas_elemento, pagina_pdf) {
 /**
  ** Abrir o visualizador de algum PDF
  * @param {String} link_pdf URL do pdf para abrir
+ * @returns {Promise<Boolean>} True/false se conseguiu abrir o PDF
  */
-async function abrirPDF(link_pdf) {
+async function abrirPDF(link_pdf, mostrarAlertaErro = true) {
     // Carrega o PDF chamando a função da lib do pdf.js
     let pdfCarregado;
     try {
         pdfCarregado = await pdfjsLib.getDocument(link_pdf).promise
     } catch (ex) {
 
-        // Envia uma msg de erro via electron
-        enviarDialogo({
-            type: "error",
-            title: "Visualizador PDF",
-            message: "O desenho não foi encontrado no servidor!",
-            buttons: ["Fechar"]
-        })
-        return;
+        if (mostrarAlertaErro) {
+            console.log(`Enviando alerta de erro..`);
+            // Envia uma msg de erro via electron
+            enviarDialogo({
+                type: "error",
+                title: "Visualizador PDF",
+                message: "O desenho não foi encontrado no servidor!",
+                buttons: ["Fechar"]
+            })
+        } else {
+            console.log(`Erro ao abrir PDF, provavelmente o link do PDF não existe...`);
+        }
+        return false;
     }
 
     // Pega a primeira pagina(que na teoria só vai ter essa)
@@ -372,7 +397,7 @@ async function abrirPDF(link_pdf) {
     let elementoCanvas = elementoVisualizador.getElementsByTagName("canvas")[0]
 
     // Renderiza a pagina do PDF no elemento do canvas
-    renderizarPdf(elementoCanvas, paginaConteudo)
+    await renderizarPdf(elementoCanvas, paginaConteudo)
 
     // Insere o visualizador no body da pagina
     document.getElementsByTagName("body")[0].appendChild(elementoVisualizador)
@@ -396,7 +421,9 @@ async function abrirPDF(link_pdf) {
         mostrarElementos()
 
         // Volta o scroll da pagina para a posição original antes do usuario ter visualizado o PDF
-        window.scrollTo(0, visualizador_opcoes.posicao_top)
+        window.scrollTo(0, visualizador_opcoes.posicao_top);
+
+        ipcRenderer.send("PDF-FECHADO");
     }
 
     // Listeners do botão de zoom
@@ -423,6 +450,9 @@ async function abrirPDF(link_pdf) {
 
     // Esconde todos os elementos da pagina, menos o visualizador
     esconderTodosElementos()
+
+    ipcRenderer.send("PDF-ABERTO");
+    return true;
 }
 
 /**

@@ -74,6 +74,8 @@ export default {
 
     // Carregar a sessão atual se precisar...
     await this.$store.dispatch("carregarSessaoAtual")
+
+    // await this.$store.dispatch("backup")
   },
   methods: {
     /**

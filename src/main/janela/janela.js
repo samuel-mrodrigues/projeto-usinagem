@@ -243,7 +243,7 @@ export default class Janela {
 
     /**
      * Altera o tamanho da janela
-     * @param {{width: Number, height: Number}} novoTamanho Tamanho width e heigth
+     * @param {{width: Number, heigth: Number}} novoTamanho Tamanho width e heigth
      * @param {Boolean} atualizarTela Atualiza a tela imediatamente com o novo tamanho fornecido
      */
     alterarTamanhoJanela(novoTamanho = { width: 0, heigth: 0 }, atualizarTela = false) {
@@ -254,6 +254,26 @@ export default class Janela {
             this.janelaElectron.setBounds({
                 width: this.propriedadesTela.tamanhoTela.width,
                 height: this.propriedadesTela.tamanhoTela.heigth
+            })
+        }
+    }
+
+    /**
+     * Altera a posição da tela
+     * @param {{x: Number, y: Number}} novaPosicao Nova posição XY
+     * @param {Boolean} atualizarTela Atualizar a tela imediatamente?
+     */
+    alterarPosicaoJanela(novaPosicao = { x: 0, y: 0 }, atualizarTela = false) {
+        if (novaPosicao.x == 0) novaPosicao.x = 1
+        if (novaPosicao.y == 0) novaPosicao.y = 1
+
+        this.propriedadesTela.posicaoTela.x = parseInt(novaPosicao.x);
+        this.propriedadesTela.posicaoTela.y = parseInt(novaPosicao.y);
+
+        if (atualizarTela) {
+            this.janelaElectron.setBounds({
+                x: this.propriedadesTela.posicaoTela.x,
+                y: this.propriedadesTela.posicaoTela.y
             })
         }
     }
@@ -333,6 +353,23 @@ export default class Janela {
 
             ipcMain.once("SOLICITAR-HTML-RESPOSTA", (evento, objeto_dados) => {
                 resolve(objeto_dados.dados)
+            })
+        })
+    }
+
+    /**
+     * Quando o IPCRenderer enviar um .send() dessa janela com esse evento, executa a função passada na callback dessa função
+     * @param {String} eventoNome Nome do evento que será disparado da janela
+     * @param {Function} callback Funcao para executar
+     */
+    async escutarEvento(eventoNome, callback) {
+        return new Promise((resolve, reject) => {
+            ipcMain.on(eventoNome, (evento, ...args) => {
+                if (this.janelaElectron.isDestroyed()) return;
+                if (evento.sender.id == this.janelaElectron.webContents.id) {
+                    callback(...args)
+                    resolve()
+                }
             })
         })
     }

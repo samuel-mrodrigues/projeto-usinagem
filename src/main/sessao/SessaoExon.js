@@ -1,6 +1,7 @@
 import superagent from "superagent"
 import axios from "axios"
 import { PropriedadesPrograma } from "../../utils/Utils.js"
+import { ipcMain } from "electron"
 
 export class SessaoExon {
     /**
@@ -19,6 +20,18 @@ export class SessaoExon {
         console.log(`Agente de sessão do Exon pronto`);
         this.agente_sessao =
             superagent.agent()
+
+        this.cadastrarHandlersElectron();
+    }
+
+    /**
+     * Cadastra handlers electron para o renderer interagir
+     */
+    cadastrarHandlersElectron() {
+        ipcMain.handle("SESSAOEXON-EXISTEDESENHO", async (ev, linkdesenho) => {
+            console.log(`Solicitado conferir se desenho existe`);
+            return (await this.existeLinkDesenho(linkdesenho))
+        })
     }
 
     async getDadosFichaProduto(produto_codigo) {
@@ -33,22 +46,61 @@ export class SessaoExon {
             return status_retorno
         }
 
-        try {
-            let status = await this.agente_sessao.get(encodeURI(`http://192.168.1.8:81/ficha_tecnica/${produto_codigo}`))
+        for (let index = 0; index < 3; index++) {
+            console.log(`${index + 1} tentativa de pegar ficha tecnica...`);
+            try {
+                let status = await this.agente_sessao.get(encodeURI(`http://192.168.1.8:81/ficha_tecnica/${produto_codigo}`))
 
-            if (status.text.indexOf(`Visualizar Ficha Técnica`) != -1) {
-                status_retorno.sucesso = true
-                status_retorno.conteudo = status.text
-                return status_retorno
-            } else {
-                status_retorno.erro = "Não foi possível obter pagina da ficha do produto"
+                if (status.text.indexOf(`Visualizar Ficha Técnica`) != -1) {
+                    status_retorno.sucesso = true
+                    status_retorno.conteudo = status.text
+                    return status_retorno
+                } else {
+                    status_retorno.erro = "Não foi possível obter pagina da ficha do produto"
+                }
+
+            } catch (erro) {
+                status_retorno.erro = `Ficha do produto não cadastrada!`
             }
-
-        } catch (erro) {
-            status_retorno.erro = `Ficha do produto não cadastrada!`
         }
 
         return status_retorno
+    }
+
+    /**
+     * Verifica se o link de algum desenho existe
+     * @param {String} linkDesenho 
+     * @returns {Promise<{sucesso: Boolean, erro: String, existe: Boolean}>} True/false se o desenho existir 
+     */
+    async existeLinkDesenho(linkDesenho) {
+        console.log(`Verificando se o link (${linkDesenho} existe)`);
+        let status_retorno = {
+            sucesso: false,
+            erro: '',
+            existe: false
+        }
+
+        if (!this.login_dados.validado) {
+            status_retorno.erro = "ERRO: Recurso não definido"
+            return status_retorno
+        }
+
+        let status;
+        try {
+            status = await this.agente_sessao.get(linkDesenho)
+        } catch (ex) {
+            status_retorno.sucesso = true;
+            status_retorno.existe = false;
+            return status_retorno;
+        }
+
+        if (status.statusCode == 200) {
+            status_retorno.existe = true;
+        } else {
+            status_retorno.existe = false;
+        }
+
+        return status_retorno;
     }
 
     async getTelaProducao() {
@@ -138,7 +190,13 @@ export class SessaoExon {
         this.logado = false
         console.log(`Procurando informações do usuario id ${recursoLinha} no Exon`);
 
-        let requestUsuario = await axios.get(`${PropriedadesPrograma.Backend.Url}/usuarios/${recursoLinha}`)
+        let requestUsuario;
+        try {
+            requestUsuario = await axios.get(`${PropriedadesPrograma.Backend.Url}/usuarios/${recursoLinha}`)
+        } catch (ex) {
+            this.login_dados.validado = false
+            return;
+        }
 
         console.log(requestUsuario.data);
         if (requestUsuario.status == 200) {

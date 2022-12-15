@@ -1,4 +1,5 @@
 import { toRaw } from "vue"
+import { ipcRenderer } from "electron"
 
 /**
  * Pausa o codigo por x segundos
@@ -27,4 +28,11 @@ export function removerReatividade(objeto) {
     }
 
     return objeto
+}
+
+/**
+ * Retorna o diretorio raiz do programa
+ */
+export async function getDiretorioPrograma() {
+    return await ipcRenderer.invoke("DIRETORIO-ARQUIVO")
 }

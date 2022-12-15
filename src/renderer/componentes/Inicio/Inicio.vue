@@ -9,7 +9,7 @@
         v-on:config-alterada="eventoConfigurarAlterado" />
     </div>
 
-    <p class="titulo">FICHA TÉCNICA</p>
+    <p class="titulo" @click="teste()">FICHA TÉCNICA</p>
     <div class="digita-produto">
       <div @mouseenter="toggleTecladoVirtual(true)" @mouseleave="toggleTecladoVirtual(false)">
         <input style="margin-top: 20px" type="text" placeholder="HF 01..." v-model="produto_digitado"
@@ -64,6 +64,7 @@ import { ipcRenderer } from "electron";
 import MenuConfigurar from "../ConfiguraAbas/MenuConfigurar/MenuConfigurar.vue";
 import TecladoVirtualVue from "../TeladoVirtual/TecladoVirtual.vue";
 import { cadastrarListener, excluirListener } from "../../utils/Listeners/JsListeners.js"
+import axios from "axios";
 
 export default {
   name: "App",
@@ -125,8 +126,12 @@ export default {
     },
   },
   methods: {
-    teste() {
-      console.log(this.$refs.campo_produto.focus());
+    async teste() {
+      console.log("--------------------------------------");
+      let existe = await ipcRenderer.invoke("SESSAOEXON-EXISTEDESENHO", `http://192.168.1.8:81/desenhos_producao/Exon/DESENHOS%20SEPARADOS/HF%2020/RET%C3%8DFdICA.pdf`)
+
+      console.log(existe);
+      console.log("--------------------------------------");
     },
     async eventoConfigurarAlterado(dadosObjeto) {
       console.log(`Novos dados de configurações recebidos`);

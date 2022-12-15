@@ -38,9 +38,9 @@ let slotsFichaTecnica = {
  */
 let slotJanelaProducao = {
     /**
-    * @type {[Janela]}
+    * @type {Janela}
     */
-    slotProducao: [],
+    slotProducao: undefined,
     janelaProducaoTaskid: -1
 }
 
@@ -187,12 +187,50 @@ function cadastrarAtalhosGlobais() {
 }
 
 /**
+ * @typedef ParametrosAberturaJanelaProduto
+ * @property {String} codigo
+ * @property {{id: Number, descricao: String}} marca
+ */
+
+/**
+ * @typedef ParametrosAberturaJanela
+ * @property {String} tipo
+ * @property {String} nome
+ * @property {{aba_id: Number, abrirDesenhosAutomatico: Boolean}} propriedades
+ * @property {Boolean} oculto
+ */
+
+/**
+ * @typedef ParametrosAbertura
+ * @property {[[ParametrosAberturaJanela]]} janelas 
+ * @property {Number} usuarioId
+ * @property {ParametrosAberturaJanelaProduto} produto
+ * @property {Boolean} usarEfeitos
+ */
+
+
+// Informações do display do usuario
+let janelaWidth = 0
+let janelaHeigth = 0
+
+// Posição onde irá ficar a janela
+let posicaoX = 0
+let posicaoY = 0
+
+/**
+ * Ultimos parametros de abertura
+ * @type {ParametrosAbertura}
+ */
+let ultimosParametrosAbertura = {}
+
+/**
  * Realiza a abertura das telas configuradas pelo usuario
- * @param {{janelas: [tipo: String, nome: String, propriedades: {aba_id: Number, abrirDesenhosAutomatico: Boolean}], usuarioId: Number, produto: {codigo: String, marca: {id: Number, descricao: String}}, usarEfeitos: Boolean}} parametrosAbertura
+ * @param {ParametrosAbertura} parametrosAbertura
  */
 async function abrirTelasConfiguradas(parametrosAbertura) {
     log(`Iniciando a abertura das telas, parametros:`);
     log(parametrosAbertura);
+    ultimosParametrosAbertura = parametrosAbertura
 
     log(`Informações das janelas`)
     parametrosAbertura.janelas.forEach(janelaObj => console.log(janelaObj))
@@ -231,20 +269,34 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
     // Dados HTML da tela de producao das OPs do Exon
     let exonTelaProducao = null
 
+
     // Verifica se não esta logado
     if (!SessaoAtual.logado) {
-        mostraNotificacao(`Autenticando-se ao Exon...`)
-        await pausa(1)
 
-        // Tenta se logar
-        let statusLogin = await SessaoAtual.iniciarLogin()
-        if (statusLogin.sucesso) {
-            mostraNotificacao(`Autenticado com sucesso`, 0, "ok")
-        } else {
-            mostraNotificacao(`${statusLogin.erro}`, 5, "erro")
-            return false
+        let deuAlgumErro = false;
+        for (let index = 0; index < 3; index++) {
+            mostraNotificacao(!deuAlgumErro ? `Autenticando-se ao Exon...` : `Tentando se autenticar ao Exon novamente...`)
+            await pausa(1)
+
+            // Tenta se logar
+            let statusLogin = await SessaoAtual.iniciarLogin()
+            if (statusLogin.sucesso) {
+                mostraNotificacao(`Autenticado com sucesso`, 0, "ok")
+                break;
+            } else {
+                deuAlgumErro = true;
+                mostraNotificacao(`Sem sucesso ao autenticar ao Exon...`, 5, "erro")
+                await pausa(3)
+            }
+        }
+
+        if (!SessaoAtual.logado) {
+            mostraNotificacao(`Não foi possível acessar o Exon, tente mais tarde...`, 5, "erro")
+
+            return false;
         }
     }
+
     await pausa(1)
     // Passa por cada linha de slot configurado
     for (let linha = 0; linha < janelas.length; linha++) {
@@ -256,18 +308,18 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
             await pausa(1)
 
             /**
-             * @type {{nome: String, tipo: String, propriedades: {aba_id: Number, abrirDesenhosAutomatico: Boolean}}}
+             * @type {ParametrosAberturaJanela}
              */
             const janelaPropriedades = janelas[linha][janela]
             log(janelaPropriedades);
 
             // Informações do display do usuario
-            let janelaWidth = infoDisplayPrincipal.width / janelas[linha].length;
-            let janelaHeigth = infoDisplayPrincipal.height / janelas.length
+            janelaWidth = infoDisplayPrincipal.width / janelas[linha].length;
+            janelaHeigth = infoDisplayPrincipal.height / janelas.length
 
             // Posição onde irá ficar a janela
-            let posicaoX = janelaWidth * janela;
-            let posicaoY = janelaHeigth * linha
+            posicaoX = janelaWidth * janela;
+            posicaoY = janelaHeigth * linha
             log(`Gerando janela ${janelaWidth}x${janelaHeigth}`);
             log(`Posição X${posicaoX}, Y: ${posicaoY}`);
 
@@ -367,6 +419,9 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
 
                     // janelaObjeto.janelaElectron.webContents.openDevTools()
 
+                    // Define o ID dessa janela
+                    janelaObjeto.janelaElectron.webContents.send("DEFINIR-WEBCONTENTID", janelaObjeto.janelaElectron.webContents.id)
+
                     // Define as informações do produto
                     janelaObjeto.janelaElectron.webContents.send("DEFINIR-PRODUTO", { codigo: produtoCodigo, marca: { id: produtoMarca.id, descricao: produtoMarca.descricao } })
 
@@ -382,17 +437,35 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
                     // Verifica se tem que abrir o desenho automaticamente
                     if (janelaPropriedades.propriedades.abrirDesenhosAutomatico) {
                         janelaObjeto.janelaElectron.webContents.send("ABRIR-DESENHO-AUTOMATICO")
+
+                        console.log(`Esperando confirmação do PDF...`);
+                        await janelaObjeto.escutarEvento("STATUS-DESENHOAUTOMATICO", (conseguiuAbrir) => {
+
+                            console.log(`Consegiu abrir?`);
+                            console.log(conseguiuAbrir);
+                            if (!conseguiuAbrir) {
+
+                                console.log(`Ocorreu um erro ao abrir desenho automatico da janela ${janelaPropriedades.nome}`);
+
+                                janelaPropriedades.oculto = true;
+                                console.log(`Recalculando tamanho das janelas`);
+                                // atualizarTamanhoJanelas()
+                            } else {
+                                console.log(`Conseguiu abrir o desenho automatico!`);
+                            }
+                        })
+
+                        console.log(`Confirmação do PDF ok...`);
                     }
 
                     // Adiciona o objeto na lista de janelas de ficha tecnica
                     if (!janelaExistente) {
                         slotsFichaTecnica.slotsFichas.push(janelaObjeto)
                     }
-
                     break;
                 case "tela_producao":
                     // Se a janela de produção já tiver aberta, só continuar...
-                    if (slotJanelaProducao.slotProducao.length > 1) continue;
+                    if (slotJanelaProducao.slotProducao != undefined) continue;
 
                     log(`Tela é da produção`);
 
@@ -438,7 +511,7 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
                     // Avisa a pagina que esta tudo ok para mostrar
                     // janelaObjeto.janelaElectron.webContents.openDevTools()
                     janelaObjeto.janelaElectron.webContents.send("OK")
-                    slotJanelaProducao.slotProducao.push(janelaObjeto)
+                    slotJanelaProducao.slotProducao = janelaObjeto
 
                     slotJanelaProducao.janelaProducaoTaskid = setInterval(async () => {
                         janelaObjeto.janelaElectron.webContents.send("ESCONDER-PAGINA", true)
@@ -471,7 +544,87 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
         }
     }, 500)
 
+    atualizarTamanhoJanelas()
     return true;
+}
+
+/**
+ * Recalcula o tamanho das janelas
+ */
+function atualizarTamanhoJanelas() {
+    console.log(`Recalculando janelas...`);
+    let infoDisplayPrincipal = screen.getPrimaryDisplay().workArea;
+    ultimosParametrosAbertura.janelas = ultimosParametrosAbertura.janelas.map(linhasSlots => {
+        let novoArray = []
+
+        for (const slotJanela of linhasSlots) {
+            if (!slotJanela.oculto) {
+                novoArray.push(slotJanela)
+            } else {
+                console.log(`Preciso remover a janela ${slotJanela.nome}`);
+
+                if (slotJanela.tipo == "ficha_tecnica") {
+                    slotsFichaTecnica.slotsFichas = slotsFichaTecnica.slotsFichas.filter(slotFichaObj => {
+                        if (slotFichaObj.getNomeJanela() != slotJanela.nome) {
+                            return true;
+                        } else {
+                            slotFichaObj.janelaElectron.close();
+                            return false;
+                        }
+                    })
+                }
+            }
+        }
+
+        return novoArray;
+    })
+
+    ultimosParametrosAbertura.janelas = ultimosParametrosAbertura.janelas.filter(linhaSlots => linhaSlots.length != 0)
+
+    console.log(`Janelas restantes:`);
+    console.log(ultimosParametrosAbertura.janelas);
+
+    if (ultimosParametrosAbertura.janelas.length == 0) {
+        console.log(`Nada para atualizar!`);
+        return;
+    }
+    for (let linha = 0; linha < ultimosParametrosAbertura.janelas.length; linha++) {
+        // Passa por cada slot na linha atual
+        for (let janela = 0; janela < ultimosParametrosAbertura.janelas[linha].length; janela++) {
+            /**
+             * @type {ParametrosAberturaJanela}
+             */
+            const janelaPropriedades = ultimosParametrosAbertura.janelas[linha][janela]
+            console.log(`Recalculando janela: ${janelaPropriedades.nome}`);
+
+            // Informações do display do usuario
+            janelaWidth = infoDisplayPrincipal.width / ultimosParametrosAbertura.janelas[linha].length;
+            janelaHeigth = infoDisplayPrincipal.height / ultimosParametrosAbertura.janelas.length
+            console.log(`Width: ${janelaWidth}, Heigth: ${janelaHeigth}`);
+
+            posicaoX = janelaWidth * janela;
+            posicaoY = janelaHeigth * linha
+            console.log(`X: ${posicaoX}, Y: ${posicaoY}`);
+
+            /**
+             * 
+             */
+            let referenciaJanelaObj;
+            switch (janelaPropriedades.tipo) {
+                case "ficha_tecnica":
+                    referenciaJanelaObj = slotsFichaTecnica.slotsFichas.find(janelaObj => janelaObj.getNomeJanela() == janelaPropriedades.nome)
+                    break;
+                case "tela_producao":
+                    referenciaJanelaObj = slotJanelaProducao.slotProducao
+                    break;
+            }
+
+            if (referenciaJanelaObj == undefined) continue;
+
+            referenciaJanelaObj.alterarPosicaoJanela({ x: posicaoX, y: posicaoY }, true)
+            referenciaJanelaObj.alterarTamanhoJanela({ heigth: janelaHeigth, width: janelaWidth }, true)
+        }
+    }
 }
 
 /**
@@ -482,6 +635,7 @@ async function abrirTelasConfiguradas(parametrosAbertura) {
 async function fecharTodasJanelas(parametros = { ativarEfeitos: true }) {
     log(`Fechando janelas abertas...`);
 
+    // Fechar os slots da ficha tecnica
     clearInterval(utils.taskidIntervaloMostraJanela)
     for (let janelaFicha of slotsFichaTecnica.slotsFichas) {
         janelaFicha.janelaElectron.webContents.send("ESCONDER-PAGINA", true)
@@ -489,19 +643,22 @@ async function fecharTodasJanelas(parametros = { ativarEfeitos: true }) {
         janelaFicha.janelaElectron.close()
     }
 
-    for (const slotProducao of slotJanelaProducao.slotProducao) {
-        slotProducao.janelaElectron.webContents.send("ESCONDER-PAGINA", true)
-        if (parametros.ativarEfeitos) await slotProducao.aplicarEfeitoFechar(1)
-        slotProducao.janelaElectron.close()
+    // Fechar o slot de produção
+    if (slotJanelaProducao.slotProducao != undefined) {
+        slotJanelaProducao.slotProducao.janelaElectron.webContents.send("ESCONDER-PAGINA", true)
+        if (parametros.ativarEfeitos) await slotJanelaProducao.slotProducao.aplicarEfeitoFechar(1)
+        slotJanelaProducao.slotProducao.janelaElectron.close()
         clearInterval(slotJanelaProducao.janelaProducaoTaskid)
     }
 
+    // Zerar variaveis
     slotsFichaTecnica.slotsFichas = []
-    slotJanelaProducao.slotProducao = []
+    slotJanelaProducao.slotProducao = undefined
     log(`Janelas fechadas`);
     janelaPrincipal.setAlwaysOnTop(false, "normal")
     return true
 }
+
 
 /**
  * Aplica modificações em um slot que seja do tipo ficha tecnica
@@ -727,18 +884,16 @@ function priorizarFocoTelaPrincipal() {
         if (slotFicha.janelaElectron.isFocused()) possuiAlgumSlotFocado = true
     }
 
-    for (const slotProducao of slotJanelaProducao.slotProducao) {
-        if (slotProducao.janelaElectron.isFocused()) possuiAlgumSlotFocado = true
+    if (slotJanelaProducao.slotProducao != undefined) {
+        if (slotJanelaProducao.slotProducao.janelaElectron.isFocused()) possuiAlgumSlotFocado = true
     }
+
 
     if (janelaFundo.janelaElectron.isFocused()) possuiAlgumSlotFocado = true
 
     if (possuiAlgumSlotFocado) {
-        console.log(`Janela tem algum foco, focando menu!`)
         janelaPrincipal.moveTop()
         // janelaPrincipal.setFocusable(true)
-    } else {
-        console.log(`Nenhuma janela com foco, ignorando...!`);
     }
 }
 

@@ -14,6 +14,7 @@ ipcRenderer.on("SOLICITAR-HTML", (ev) => {
     ipcRenderer.send("SOLICITAR-HTML-RESPOSTA", { dados: htmlString })
 })
 
+
 /**
  * Envia uma mensagem de dialogo para o usuario na tela
  * @param {Electron.MessageBoxOptions} msgProps 
